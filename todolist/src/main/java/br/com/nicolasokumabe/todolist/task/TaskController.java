@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import br.com.nicolasokumabe.todolist.utils.Utils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -79,4 +80,26 @@ public class TaskController {
         var taskUpdated = this.taskRepository.save(task);
         return ResponseEntity.ok().body(taskUpdated);
     }
+
+    @DeleteMapping("/{id}") // Anotação para lidar com as requisições DELETE
+    public ResponseEntity delete(HttpServletRequest request, @PathVariable UUID id) {
+        var task = this.taskRepository.findById(id).orElse(null);
+        
+        if(task == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Tarefa não encontrada");
+        }
+        
+        var idUser = request.getAttribute("idUser");
+        
+        if(!task.getIdUser().equals(idUser)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Usuário não tem permissão para excluir essa tarefa");
+        }
+        
+        this.taskRepository.delete(task);
+        
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
 }
