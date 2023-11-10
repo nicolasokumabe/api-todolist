@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import br.com.nicolasokumabe.todolist.ErrorResponse;
+import br.com.nicolasokumabe.todolist.PasswordChangeModel;
 
 /**
  * Modificador
@@ -54,6 +56,21 @@ public class UserController {
         var userCreated = this.userRepository.save(userModel);
         return ResponseEntity.status(HttpStatus.OK).body(userCreated);
     }
+
+    @PatchMapping("/change-password")
+    public ResponseEntity changePassword(@RequestBody PasswordChangeModel passwordChangeModel) {
+        UserModel user = this.userRepository.findByUsername(passwordChangeModel.getUsername());
+        if (user == null || !BCrypt.verifyer().verify(passwordChangeModel.getCurrentPassword().toCharArray(), user.getPassword()).verified) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(1005, "Credenciais inválidas"));
+        }
+
+        var passwordHashred = BCrypt.withDefaults().hashToString(12, passwordChangeModel.getNewPassword().toCharArray());
+        user.setPassword(passwordHashred);
+        this.userRepository.save(user);
+
+        return ResponseEntity.status(HttpStatus.OK).body(new ErrorResponse(1007, "Senha alterada com sucesso"));
+     }
+
 
     @DeleteMapping("/")
     public ResponseEntity deleteUser(@RequestBody UserModel userModel) {
