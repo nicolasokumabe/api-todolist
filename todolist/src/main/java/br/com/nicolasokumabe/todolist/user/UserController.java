@@ -63,42 +63,42 @@ public class UserController {
     }
 
     @PatchMapping("/change-password")
-public ResponseEntity changePassword(@Valid @RequestBody PasswordChangeModel passwordChangeModel) {
-    // Verifica se o newPassword é nulo ou vazio
-    if (StringUtils.isBlank(passwordChangeModel.getNewPassword())) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(1006, "A nova senha não pode ser vazia"));
+    public ResponseEntity changePassword(@Valid @RequestBody PasswordChangeModel passwordChangeModel) {
+        // Verifica se o newPassword é nulo ou vazio
+        if (StringUtils.isBlank(passwordChangeModel.getNewPassword())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(1006, "A nova senha não pode ser vazia"));
+        }
+
+        // Verifica se a nova senha tem pelo menos 6 caracteres
+        if (passwordChangeModel.getNewPassword().length() < 6) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(1008, "A nova senha deve ter pelo menos 6 caracteres"));
+        }
+
+        UserModel user = this.userRepository.findByUsername(passwordChangeModel.getUsername());
+        
+        // Verifica se currentPassword está presente no payload
+        if (StringUtils.isBlank(passwordChangeModel.getCurrentPassword())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(1010, "A senha atual deve ser fornecida"));
+        }
+
+        // Verifica se a senha atual é válida
+        if (user == null || !BCrypt.verifyer().verify(passwordChangeModel.getCurrentPassword().toCharArray(), user.getPassword()).verified) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(1005, "Credenciais inválidas"));
+        }
+
+        // Verifica se a nova senha é diferente da senha atual
+        if (BCrypt.verifyer().verify(passwordChangeModel.getNewPassword().toCharArray(), user.getPassword()).verified) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(1009, "A nova senha não pode ser igual à senha atual"));
+        }
+
+        var passwordHashed = BCrypt.withDefaults().hashToString(12, passwordChangeModel.getNewPassword().toCharArray());
+        user.setPassword(passwordHashed);
+        this.userRepository.save(user);
+
+        return ResponseEntity.status(HttpStatus.OK).body(new SuccessResponse(1007, "Senha alterada com sucesso"));
     }
 
-    // Verifica se a nova senha tem pelo menos 6 caracteres
-    if (passwordChangeModel.getNewPassword().length() < 6) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(1008, "A nova senha deve ter pelo menos 6 caracteres"));
-    }
-
-    UserModel user = this.userRepository.findByUsername(passwordChangeModel.getUsername());
-    
-    // Verifica se currentPassword está presente no payload
-    if (StringUtils.isBlank(passwordChangeModel.getCurrentPassword())) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(1010, "A senha atual deve ser fornecida"));
-    }
-
-    // Verifica se a senha atual é válida
-    if (user == null || !BCrypt.verifyer().verify(passwordChangeModel.getCurrentPassword().toCharArray(), user.getPassword()).verified) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(1005, "Credenciais inválidas"));
-    }
-
-    // Verifica se a nova senha é diferente da senha atual
-    if (BCrypt.verifyer().verify(passwordChangeModel.getNewPassword().toCharArray(), user.getPassword()).verified) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(1009, "A nova senha não pode ser igual à senha atual"));
-    }
-
-    var passwordHashed = BCrypt.withDefaults().hashToString(12, passwordChangeModel.getNewPassword().toCharArray());
-    user.setPassword(passwordHashed);
-    this.userRepository.save(user);
-
-    return ResponseEntity.status(HttpStatus.OK).body(new SuccessResponse(1007, "Senha alterada com sucesso"));
-}
-
-    @DeleteMapping("/")
+    @DeleteMapping("/delete-user")
     public ResponseEntity deleteUser(@RequestBody UserModel userModel) {
         
         if (userModel.getUsername() == null || userModel.getUsername().isEmpty()) {
